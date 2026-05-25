@@ -319,3 +319,8 @@ Ctrl + Alt
 
 * Windows 10 / 11
 * AutoHotkey v2
+
+# 许可证
+
+* MIT License for modifications and additions.
+* Original source attribution retained.
