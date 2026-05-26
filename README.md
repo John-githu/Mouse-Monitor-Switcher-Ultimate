@@ -183,6 +183,12 @@ Ctrl + Alt + 1
 
 ## 方式 1（推荐）
 
+windows10/11 系统直接运行 MouseMonitorSwitcher.exe
+其它系统暂未测试
+
+
+## 方式 2
+
 安装：
 
 [AutoHotkey v2 官方网站](https://www.autohotkey.com/?utm_source=chatgpt.com)
