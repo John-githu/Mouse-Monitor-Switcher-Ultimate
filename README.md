@@ -31,6 +31,7 @@ with major rewrites and additional features.
 ---
 
 # 功能特性
+运行后在任务栏上找到图标⭐，右键点击选择相应的功能。
 
 ## 1. 鼠标快速跨屏切换
 通过快捷键瞬间将鼠标移动到指定显示器。
