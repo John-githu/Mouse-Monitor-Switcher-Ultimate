@@ -4,151 +4,62 @@
 Persistent
 
 ; =========================================================
-; Mouse Monitor Switcher Ultimate
-; AutoHotkey v2
-;
 ; Original AHK v1 script and concept:
 ; Joe Winograd
 ; https://www.experts-exchange.com/articles/33932/
-;
-; GitHub:
-; https://github.com/John-githu/
-; Mouse-Monitor-Switcher-Ultimate
-;
-; Features:
-; - Multi-monitor mouse switching
-; - Smooth mouse animation
-; - PowerToys-style animation
-; - Mouse trail effects
-; - Monitor mouse position memory
-; - Custom hotkeys
-; - Startup support
-; - Portrait/Landscape awareness
-; - Monitor identification
-; - About dialog
-; - Update checker
-;
-; Author:
-; John-githu
-;
-; Version:
-; v1.0.0
 ; =========================================================
 
-; =========================================================
-; App Info
-; =========================================================
+CoordMode "Mouse", "Screen"
 
-global AppVersion := "v1.0.0"
+global 软件版本 := "v1.1.0"
+global 作者名称 := "John-github"
 
-global AppAuthor := "John-githu"
+global GitHub地址 :=
+    "https://github.com/John-githu/Mouse-Monitor-Switcher-Ultimate"
 
-global GitHubURL :=
-    "https://github.com/John-githu/Mouse-Monitor-Switcher-Ultimate?tab=readme-ov-file"
-
-; =========================================================
-; Config
-; =========================================================
-
-global SettingsFile :=
+global 配置文件 :=
     A_ScriptDir . "\MouseMonitorSwitcher.ini"
 
-; =========================================================
-; Default Config
-; =========================================================
-
-if !FileExist(SettingsFile)
+if !FileExist(配置文件)
 {
-    IniWrite(
-        "^!",
-        SettingsFile,
-        "General",
-        "HotkeyModifiers"
-    )
-
-    ; 默认关闭
-    IniWrite(
-        "0",
-        SettingsFile,
-        "General",
-        "RememberPosition"
-    )
-
-    IniWrite(
-        "0",
-        SettingsFile,
-        "General",
-        "RunAtStartup"
-    )
-
-    IniWrite(
-        "0",
-        SettingsFile,
-        "General",
-        "EnableMouseTrail"
-    )
-
-    ; 默认开启 PowerToys 动画
-    IniWrite(
-        "1",
-        SettingsFile,
-        "General",
-        "EnablePowerToysAnimation"
-    )
+    IniWrite("^!", 配置文件, "设置", "快捷键")
+    IniWrite("0", 配置文件, "设置", "记忆位置")
+    IniWrite("1", 配置文件, "设置", "PowerToys动画")
 }
 
-; =========================================================
-; Load Config
-; =========================================================
-
-global HotkeyModifiers :=
+global 快捷键修饰符 :=
     IniRead(
-        SettingsFile,
-        "General",
-        "HotkeyModifiers",
+        配置文件,
+        "设置",
+        "快捷键",
         "^!"
     )
 
-global EnableRememberPosition :=
+global 启用记忆位置 :=
 (
     IniRead(
-        SettingsFile,
-        "General",
-        "RememberPosition",
+        配置文件,
+        "设置",
+        "记忆位置",
         "0"
     ) = "1"
 )
 
-global EnableMouseTrail :=
-(
-    IniRead(
-        SettingsFile,
-        "General",
-        "EnableMouseTrail",
-        "0"
-    ) = "1"
-)
 
-global EnablePowerToysAnimation :=
+global 启用PowerToys动画 :=
 (
     IniRead(
-        SettingsFile,
-        "General",
-        "EnablePowerToysAnimation",
+        配置文件,
+        "设置",
+        "PowerToys动画",
         "1"
     ) = "1"
 )
 
-; =========================================================
-; Animation
-; =========================================================
+global 动画步数 := 45
+global 动画速度 := 2
 
-global AnimationSpeed := 6
-global AnimationSteps := 40
-
-; =========================================================
-; DPI Awareness
-; =========================================================
+global 正在动画移动 := false
 
 try
 {
@@ -160,348 +71,286 @@ try
     )
 }
 
-; =========================================================
-; Monitor IDs
-; =========================================================
+global 显示器鼠标位置 := Map()
 
-global MonitorIDs := [
+global 显示器编号列表 := [
     "1","2","3","4","5","6","7","8","9",
-    "a","b","c","d","e","f","g","h","i","j",
-    "k","l","m","n","o","p","q","r","s","t",
-    "u","v","w","x","y","z"
+    "a","b","c","d","e","f","g","h","i",
+    "j","k","l","m","n","o","p","q","r",
+    "s","t","u","v","w","x","y","z"
 ]
 
-global MonitorNums := Map()
+global 显示器映射 := Map()
 
-Loop MonitorIDs.Length
+Loop 显示器编号列表.Length
 {
-    MonitorNums[MonitorIDs[A_Index]] := A_Index
+    显示器映射[
+        显示器编号列表[A_Index]
+    ] := A_Index
 }
 
-global OrigMonitorCount := MonitorGetCount()
+注册快捷键()
 
-; =========================================================
-; Mouse Memory
-; =========================================================
-
-global MonitorMousePositions := Map()
-
-; =========================================================
-; Init
-; =========================================================
-
-RegisterHotkeys()
-
-BuildTrayMenu()
+构建托盘菜单()
 
 TraySetIcon("shell32.dll", 44)
 
-SetTrayTooltip()
+设置托盘提示()
+
+SetTimer(
+    更新鼠标位置记忆,
+    200
+)
 
 return
 
-; =========================================================
-; Tray Tooltip
-; =========================================================
-
-SetTrayTooltip()
+设置托盘提示()
 {
-    global AppVersion
-    global HotkeyModifiers
+    global 软件版本
+    global 快捷键修饰符
 
     A_IconTip :=
     (
-    "Mouse Monitor Switcher Ultimate
+    "鼠标跨显示器切换
 
 版本：
-" AppVersion "
+" 软件版本 "
 
 快捷键：
-
-" HotkeyModifiers "1~9
-" HotkeyModifiers "a~z
-
-0 = 主显示器"
+" 快捷键修饰符 "1~9"
     )
 }
 
-; =========================================================
-; Register Hotkeys
-; =========================================================
-
-RegisterHotkeys()
+注册快捷键()
 {
-    global HotkeyModifiers
-    global OrigMonitorCount
-    global MonitorIDs
+    global 快捷键修饰符
+    global 显示器编号列表
+
+    显示器数量 :=
+        MonitorGetCount()
 
     try Hotkey(
-        HotkeyModifiers . "0",
+        快捷键修饰符 . "0",
         "Off"
     )
 
-    Loop OrigMonitorCount
+    Loop 显示器数量
     {
         try
         {
-            key :=
-                HotkeyModifiers
-                . MonitorIDs[A_Index]
-
             Hotkey(
-                key,
+                快捷键修饰符
+                . 显示器编号列表[A_Index],
                 "Off"
             )
         }
     }
 
     Hotkey(
-        HotkeyModifiers . "0",
-        MoveToPrimary
+        快捷键修饰符 . "0",
+        移动到主显示器
     )
 
-    Loop OrigMonitorCount
+    Loop 显示器数量
     {
-        key :=
-            HotkeyModifiers
-            . MonitorIDs[A_Index]
-
         Hotkey(
-            key,
-            MoveToMonitor
+            快捷键修饰符
+            . 显示器编号列表[A_Index],
+            移动到指定显示器
         )
     }
 }
 
-; =========================================================
-; Tray Menu
-; =========================================================
-
-BuildTrayMenu()
+构建托盘菜单()
 {
-    global EnableRememberPosition
-    global EnableMouseTrail
-    global EnablePowerToysAnimation
+    global 启用记忆位置
+    global 启用PowerToys动画
 
     A_TrayMenu.Delete()
 
     A_TrayMenu.Add(
         "识别显示器",
-        IdentifyMonitors
+        识别显示器
     )
 
     A_TrayMenu.Add(
-        "显示显示器信息",
-        ShowMonitorInfo
+        "显示器信息",
+        显示显示器信息
     )
 
     A_TrayMenu.Add()
 
     A_TrayMenu.Add(
         "记忆鼠标位置",
-        ToggleRememberPosition
+        切换记忆位置
     )
 
-    if EnableRememberPosition
+    if 启用记忆位置
         A_TrayMenu.Check("记忆鼠标位置")
 
     A_TrayMenu.Add(
-        "鼠标轨迹特效",
-        ToggleMouseTrail
-    )
-
-    if EnableMouseTrail
-        A_TrayMenu.Check("鼠标轨迹特效")
-
-    A_TrayMenu.Add(
         "PowerToys 风格动画",
-        TogglePowerToysAnimation
+        切换PowerToys动画
     )
 
-    if EnablePowerToysAnimation
+    if 启用PowerToys动画
         A_TrayMenu.Check("PowerToys 风格动画")
 
     A_TrayMenu.Add(
         "设置快捷键",
-        ConfigureHotkeys
+        设置快捷键
     )
 
     A_TrayMenu.Add(
         "开机启动",
-        ToggleStartup
+        切换开机启动
     )
 
-    if StartupEnabled()
+    if 是否开机启动()
         A_TrayMenu.Check("开机启动")
 
     A_TrayMenu.Add()
 
     A_TrayMenu.Add(
-        "检查更新",
-        CheckUpdate
-    )
-
-    A_TrayMenu.Add(
         "关于",
-        ShowAbout
+        显示关于
     )
 
     A_TrayMenu.Add()
 
     A_TrayMenu.Add(
         "重新加载",
-        ReloadScript
+        (*) => Reload()
     )
 
     A_TrayMenu.Add(
         "退出",
-        ExitScript
+        (*) => ExitApp()
     )
 }
 
-; =========================================================
-; Hotkeys
-; =========================================================
-
-MoveToMonitor(ThisHotkey)
+移动到指定显示器(当前热键)
 {
-    global HotkeyModifiers
-    global MonitorNums
+    global 快捷键修饰符
+    global 显示器映射
 
-    id :=
+    编号 :=
         SubStr(
-            ThisHotkey,
-            StrLen(HotkeyModifiers) + 1
+            当前热键,
+            StrLen(快捷键修饰符) + 1
         )
 
-    if !MonitorNums.Has(id)
+    if !显示器映射.Has(编号)
         return
 
-    mon := MonitorNums[id]
-
-    MoveMouseAnimated(mon)
+    动画移动鼠标(
+        显示器映射[编号]
+    )
 }
 
-MoveToPrimary(*)
+移动到主显示器(*)
 {
-    mon := MonitorGetPrimary()
-
-    MoveMouseAnimated(mon)
+    动画移动鼠标(
+        MonitorGetPrimary()
+    )
 }
 
-; =========================================================
-; Move Mouse Animated
-; =========================================================
-
-MoveMouseAnimated(mon)
+动画移动鼠标(显示器序号)
 {
-    global AnimationSteps
-    global AnimationSpeed
-    global EnableRememberPosition
-    global MonitorMousePositions
-    global EnableMouseTrail
-    global EnablePowerToysAnimation
+    global 正在动画移动
+    global 启用记忆位置
+    global 显示器鼠标位置
+    global 启用PowerToys动画
 
-    CheckMonitorChange()
+    正在动画移动 := true
 
-    MouseGetPos(&startX, &startY)
-
-    MonitorGet(
-        mon,
-        &L,
-        &T,
-        &R,
-        &B
+    MouseGetPos(
+        &起始X,
+        &起始Y
     )
 
-    width := R - L
-    height := B - T
+    MonitorGetWorkArea(
+        显示器序号,
+        &左,
+        &上,
+        &右,
+        &下
+    )
 
-    isPortrait := height > width
-
-    ; =====================================================
-    ; Target Position
-    ; =====================================================
+    宽度 := 右 - 左
+    高度 := 下 - 上
 
     if (
-        EnableRememberPosition
-        && MonitorMousePositions.Has(mon)
+        启用记忆位置
+        && 显示器鼠标位置.Has(显示器序号)
     )
     {
-        pos :=
-            MonitorMousePositions[mon]
+        保存位置 :=
+            显示器鼠标位置[显示器序号]
 
-        targetX := pos.x
-        targetY := pos.y
+        目标X :=
+            左
+            + Round(
+                宽度
+                * 保存位置.x
+            )
+
+        目标Y :=
+            上
+            + Round(
+                高度
+                * 保存位置.y
+            )
+
+        目标X :=
+            Max(
+                左 + 2,
+                Min(右 - 2, 目标X)
+            )
+
+        目标Y :=
+            Max(
+                上 + 2,
+                Min(下 - 2, 目标Y)
+            )
     }
     else
     {
-        if isPortrait
-        {
-            targetX :=
-                L + Floor(width / 2)
+        目标X :=
+            左 + Floor(宽度 / 2)
 
-            targetY :=
-                T + Floor(height * 0.35)
-        }
-        else
-        {
-            targetX :=
-                L + Floor(width / 2)
-
-            targetY :=
-                T + Floor(height / 2)
-        }
+        目标Y :=
+            上 + Floor(高度 / 2)
     }
 
-    ; =====================================================
-    ; Save Current Position
-    ; =====================================================
-
-    currentMon := GetCurrentMonitor()
-
-    if currentMon > 0
+    if 启用PowerToys动画
     {
-        MonitorMousePositions[currentMon] := {
-            x: startX,
-            y: startY
-        }
-    }
-
-    ; =====================================================
-    ; Animation Style
-    ; =====================================================
-
-    if EnablePowerToysAnimation
-    {
-        steps := 60
-        speed := 4
+        步数 := 60
+        速度 := 4
     }
     else
     {
-        steps := AnimationSteps
-        speed := AnimationSpeed
+        步数 := 35
+        速度 := 6
     }
 
-    Loop steps
+    Loop 步数
     {
-        t := A_Index / steps
+        t := A_Index / 步数
 
-        ; easeOutExpo
-
-        smooth :=
+        平滑值 :=
             (t >= 1)
             ? 1
             : 1 - (2 ** (-10 * t))
 
         x := Round(
-            startX
-            + ((targetX - startX) * smooth)
+            起始X
+            + ((目标X - 起始X) * 平滑值)
         )
 
         y := Round(
-            startY
-            + ((targetY - startY) * smooth)
+            起始Y
+            + ((目标Y - 起始Y) * 平滑值)
         )
 
         DllCall(
@@ -510,633 +359,414 @@ MoveMouseAnimated(mon)
             "int", y
         )
 
-        ; =================================================
-        ; Mouse Trail
-        ; =================================================
-
-        if EnableMouseTrail
-        {
-            ToolTip(
-                "✦",
-                x + 16,
-                y + 16
-            )
-
-            SetTimer(
-                RemoveTrailTooltip,
-                -30
-            )
-        }
-
-        Sleep(speed)
+        DllCall("Sleep", "UInt", 1)
     }
 
     DllCall(
         "SetCursorPos",
-        "int", targetX,
-        "int", targetY
+        "int", 目标X,
+        "int", 目标Y
     )
+
+    Sleep(50)
+
+    正在动画移动 := false
 }
 
-; =========================================================
-; Remove Tooltip
-; =========================================================
-
-RemoveTrailTooltip()
+更新鼠标位置记忆()
 {
-    ToolTip()
-}
+    global 正在动画移动
+    global 启用记忆位置
+    global 显示器鼠标位置
 
-; =========================================================
-; Current Monitor
-; =========================================================
+    if !启用记忆位置
+        return
 
-GetCurrentMonitor()
-{
-    MouseGetPos(&mx, &my)
+    if 正在动画移动
+        return
 
-    mons := MonitorGetCount()
+    MouseGetPos(
+        &鼠标X,
+        &鼠标Y
+    )
 
-    Loop mons
+    显示器数量 :=
+        MonitorGetCount()
+
+    Loop 显示器数量
     {
-        MonitorGet(
+        MonitorGetWorkArea(
             A_Index,
-            &L,
-            &T,
-            &R,
-            &B
+            &左,
+            &上,
+            &右,
+            &下
         )
 
         if (
-            mx >= L
-            && mx <= R
-            && my >= T
-            && my <= B
+            鼠标X >= 左
+            && 鼠标X <= 右
+            && 鼠标Y >= 上
+            && 鼠标Y <= 下
         )
         {
-            return A_Index
+            宽度 := 右 - 左
+            高度 := 下 - 上
+
+            相对X :=
+                (鼠标X - 左) / 宽度
+
+            相对Y :=
+                (鼠标Y - 上) / 高度
+
+            相对X :=
+                Max(
+                    0,
+                    Min(1, 相对X)
+                )
+
+            相对Y :=
+                Max(
+                    0,
+                    Min(1, 相对Y)
+                )
+
+            显示器鼠标位置[A_Index] := {
+                x: 相对X,
+                y: 相对Y
+            }
+
+            break
         }
     }
-
-    return 0
 }
 
-; =========================================================
-; Toggle Remember Position
-; =========================================================
-
-ToggleRememberPosition(*)
+切换记忆位置(*)
 {
-    global EnableRememberPosition
-    global SettingsFile
+    global 启用记忆位置
+    global 配置文件
 
-    EnableRememberPosition :=
-        !EnableRememberPosition
+    启用记忆位置 :=
+        !启用记忆位置
 
     IniWrite(
-        EnableRememberPosition ? "1" : "0",
-        SettingsFile,
-        "General",
-        "RememberPosition"
+        启用记忆位置 ? "1" : "0",
+        配置文件,
+        "设置",
+        "记忆位置"
     )
 
-    BuildTrayMenu()
+    构建托盘菜单()
 }
 
-; =========================================================
-; Toggle Mouse Trail
-; =========================================================
-
-ToggleMouseTrail(*)
+切换PowerToys动画(*)
 {
-    global EnableMouseTrail
-    global SettingsFile
+    global 启用PowerToys动画
+    global 配置文件
 
-    EnableMouseTrail :=
-        !EnableMouseTrail
+    启用PowerToys动画 :=
+        !启用PowerToys动画
 
     IniWrite(
-        EnableMouseTrail ? "1" : "0",
-        SettingsFile,
-        "General",
-        "EnableMouseTrail"
+        启用PowerToys动画 ? "1" : "0",
+        配置文件,
+        "设置",
+        "PowerToys动画"
     )
 
-    BuildTrayMenu()
+    构建托盘菜单()
 }
 
-; =========================================================
-; Toggle PowerToys Animation
-; =========================================================
-
-TogglePowerToysAnimation(*)
+设置快捷键(*)
 {
-    global EnablePowerToysAnimation
-    global SettingsFile
+    global 快捷键修饰符
 
-    EnablePowerToysAnimation :=
-        !EnablePowerToysAnimation
+    窗口 := Gui()
 
-    IniWrite(
-        EnablePowerToysAnimation ? "1" : "0",
-        SettingsFile,
-        "General",
-        "EnablePowerToysAnimation"
-    )
+    窗口.Title := "设置快捷键"
 
-    BuildTrayMenu()
-}
-
-; =========================================================
-; Configure Hotkeys
-; =========================================================
-
-ConfigureHotkeys(*)
-{
-    global HotkeyModifiers
-
-    guiObj := Gui()
-
-    guiObj.Title := "设置快捷键"
-
-    guiObj.SetFont(
+    窗口.SetFont(
         "s10",
-        "Segoe UI"
+        "微软雅黑"
     )
 
-    guiObj.AddText(
-        "w520",
-        "请输入快捷键修饰符："
-    )
-
-    guiObj.AddText(
-        "w520",
+    窗口.AddText(
+        "w420",
         "^ = Ctrl`n"
         "! = Alt`n"
         "+ = Shift`n"
-        "# = Win"
-    )
-
-    guiObj.AddText(
-        "w520",
+        "# = Win`n`n"
         "示例：`n"
         "^! = Ctrl + Alt`n"
         "#! = Win + Alt`n"
-        "^+# = Ctrl + Shift + Win"
-    )
+        "^+# = Ctrl + Shift + Win`n`n"
 
-    guiObj.AddText(
-        "w520",
-        "实际快捷键：`n"
+		 "实际快捷键：`n"
         "Ctrl+Alt+1 → 显示器1`n"
         "Ctrl+Alt+2 → 显示器2`n"
-        "Ctrl+Alt+0 → 主显示器"
     )
+	
 
-    editBox :=
-        guiObj.AddEdit(
-            "w400",
-            HotkeyModifiers
+    输入框 :=
+        窗口.AddEdit(
+            "w320",
+            快捷键修饰符
         )
 
-    okBtn :=
-        guiObj.AddButton(
-            "Default w100",
+    确定按钮 :=
+        窗口.AddButton(
+            "w100 Default",
             "确定"
         )
 
-    cancelBtn :=
-        guiObj.AddButton(
-            "x+10 w100",
-            "取消"
-        )
-
-    okBtn.OnEvent(
+    确定按钮.OnEvent(
         "Click",
         (*) =>
         (
-            SaveHotkeys(
-                guiObj,
-                editBox.Text
+            保存快捷键(
+                窗口,
+                输入框.Text
             )
         )
     )
 
-    cancelBtn.OnEvent(
-        "Click",
-        (*) => guiObj.Destroy()
-    )
-
-    guiObj.Show(
+    窗口.Show(
         "AutoSize Center"
     )
 }
 
-SaveHotkeys(guiObj, newHotkey)
+保存快捷键(窗口, 新快捷键)
 {
-    global HotkeyModifiers
-    global SettingsFile
+    global 快捷键修饰符
+    global 配置文件
 
-    newHotkey := Trim(newHotkey)
+    新快捷键 :=
+        Trim(新快捷键)
 
-    if newHotkey = ""
+    if 新快捷键 = ""
         return
 
-    HotkeyModifiers := newHotkey
+    快捷键修饰符 :=
+        新快捷键
 
     IniWrite(
-        HotkeyModifiers,
-        SettingsFile,
-        "General",
-        "HotkeyModifiers"
+        快捷键修饰符,
+        配置文件,
+        "设置",
+        "快捷键"
     )
 
-    RegisterHotkeys()
+    注册快捷键()
 
-    SetTrayTooltip()
+    设置托盘提示()
 
-    guiObj.Destroy()
-
-    MsgBox(
-        "快捷键已更新为：`n`n"
-        HotkeyModifiers
-    )
+    窗口.Destroy()
 }
 
-; =========================================================
-; Startup
-; =========================================================
-
-ToggleStartup(*)
+切换开机启动(*)
 {
-    link :=
+    快捷方式 :=
         A_Startup
         . "\MouseMonitorSwitcher.lnk"
 
-    if FileExist(link)
+    if FileExist(快捷方式)
     {
-        FileDelete(link)
+        FileDelete(快捷方式)
     }
     else
     {
         FileCreateShortcut(
             A_ScriptFullPath,
-            link,
+            快捷方式,
             A_ScriptDir
         )
     }
 
-    BuildTrayMenu()
+    构建托盘菜单()
 }
 
-StartupEnabled()
+是否开机启动()
 {
-    link :=
+    快捷方式 :=
         A_Startup
         . "\MouseMonitorSwitcher.lnk"
 
-    return FileExist(link)
+    return FileExist(快捷方式)
 }
 
-; =========================================================
-; Identify Monitors
-; =========================================================
-
-IdentifyMonitors(*)
+识别显示器(*)
 {
-    guis := []
+    窗口列表 := []
 
-    mons := MonitorGetCount()
+    显示器数量 :=
+        MonitorGetCount()
 
-    Loop mons
+    Loop 显示器数量
     {
-        MonitorGet(
+        MonitorGetWorkArea(
             A_Index,
-            &L,
-            &T,
-            &R,
-            &B
+            &左,
+            &上,
+            &右,
+            &下
         )
 
-        cx :=
-            L + Floor((R - L) / 2)
+        中心X :=
+            左 + Floor((右 - 左) / 2)
 
-        cy :=
-            T + Floor((B - T) / 2)
+        中心Y :=
+            上 + Floor((下 - 上) / 2)
 
-        g := Gui(
+        窗口 := Gui(
             "+AlwaysOnTop -Caption +ToolWindow"
         )
 
-        g.BackColor := "Black"
+        窗口.BackColor := "Black"
 
-        g.SetFont(
-            "s48 cWhite Bold",
-            "Segoe UI"
+        窗口.SetFont(
+            "s42 cWhite Bold",
+            "微软雅黑"
         )
 
-        g.AddText(
+        窗口.AddText(
             "Center",
             A_Index
         )
 
-        g.Show(
-            "x" (cx - 80)
-            " y" (cy - 60)
+        窗口.Show(
+            "x" (中心X - 80)
+            " y" (中心Y - 60)
             " w160 h120 NoActivate"
         )
 
-        guis.Push(g)
+        窗口列表.Push(窗口)
     }
 
-    Sleep(3000)
+    Sleep(2500)
 
-    for g in guis
+    for 窗口 in 窗口列表
     {
-        try g.Destroy()
+        try 窗口.Destroy()
     }
 }
 
-; =========================================================
-; Monitor Info
-; =========================================================
-
-ShowMonitorInfo(*)
+显示显示器信息(*)
 {
-    txt := ""
+    信息 := ""
 
-    mons := MonitorGetCount()
+    显示器数量 :=
+        MonitorGetCount()
 
-    Loop mons
+    Loop 显示器数量
     {
-        MonitorGet(
+        MonitorGetWorkArea(
             A_Index,
-            &L,
-            &T,
-            &R,
-            &B
+            &左,
+            &上,
+            &右,
+            &下
         )
 
-        name := MonitorGetName(A_Index)
+        宽度 := 右 - 左
+        高度 := 下 - 上
 
-        txt .=
+        信息 .=
         (
         "显示器 " A_Index "`n"
-        "名称: " name "`n"
-        "Left: " L "`n"
-        "Top: " T "`n"
-        "Right: " R "`n"
-        "Bottom: " B "`n`n"
+        "分辨率：" 宽度 " x " 高度 "`n"
+        "左：" 左 "`n"
+        "上：" 上 "`n"
+        "右：" 右 "`n"
+        "下：" 下 "`n`n"
         )
     }
 
-    MsgBox(txt)
+    MsgBox(
+        信息,
+        "显示器信息"
+    )
 }
 
-; =========================================================
-; Check Monitor Changes
-; =========================================================
-
-CheckMonitorChange()
+显示关于(*)
 {
-    global OrigMonitorCount
+    global 软件版本
+    global 作者名称
+    global GitHub地址
 
-    current := MonitorGetCount()
+    窗口 := Gui()
 
-    if current != OrigMonitorCount
-    {
-        MsgBox(
-            "显示器数量发生变化，脚本将重新加载"
-        )
+    窗口.Title := "关于"
 
-        Reload()
-    }
-}
-
-; =========================================================
-; About
-; =========================================================
-
-ShowAbout(*)
-{
-    global AppVersion
-    global AppAuthor
-    global GitHubURL
-
-    aboutGui := Gui()
-
-    aboutGui.Title := "关于"
-
-    ; =====================================================
-    ; Title
-    ; =====================================================
-
-    aboutGui.SetFont(
-        "s12 Bold",
-        "Segoe UI"
+    窗口.SetFont(
+        "s10",
+        "微软雅黑"
     )
 
-    aboutGui.AddText(
-        "w580 Center",
-        "Mouse Monitor Switcher Ultimate"
+    窗口.AddText(
+        "w500 Center",
+        "鼠标跨显示器切换"
     )
 
-    ; =====================================================
-    ; Version
-    ; =====================================================
-
-    aboutGui.SetFont(
-        "s9",
-        "Segoe UI"
+    窗口.AddText(
+        "w500",
+        "版本：" 软件版本
     )
 
-    aboutGui.AddText(
-        "w580 Center",
-        "版本 " AppVersion
+    窗口.AddText(
+        "w500",
+        "作者：" 作者名称
     )
 
-    ; =====================================================
-    ; Description
-    ; =====================================================
-
-    aboutGui.AddText(
-        "w580",
-        "
-(
-多显示器鼠标快速切换工具
-
-功能特性：
-
-• 鼠标跨屏动画
-• PowerToys 风格动画
-• 鼠标轨迹特效
-• 鼠标位置记忆
-• 自定义快捷键
-• 开机启动
-• 屏幕方向感知
-• 多显示器识别
-
-)"
-    )
-
-    ; =====================================================
-    ; Author
-    ; =====================================================
-
-    aboutGui.SetFont(
-        "s9 Bold",
-        "Segoe UI"
-    )
-
-    ; =====================================================
-    ; GitHub
-    ; =====================================================
-
-    aboutGui.SetFont(
-        "s9",
-        "Segoe UI"
-    )
-
-    aboutGui.AddText(
-        "xm y+12",
+    窗口.AddText(
+        "w500",
         "GitHub："
     )
 
-    githubLink :=
-        aboutGui.AddText(
+    链接 :=
+        窗口.AddText(
             "cBlue",
-            GitHubURL
+            GitHub地址
         )
 
-    githubLink.SetFont(
+    链接.SetFont(
         "underline"
     )
 
-    githubLink.OnEvent(
+    链接.OnEvent(
         "Click",
-        OpenGitHub
+        打开GitHub
     )
 
-    ; =====================================================
-    ; Original Source
-    ; =====================================================
-
-    aboutGui.AddText(
-        "xm y+15",
-        "Original AHK v1 concept:"
-    )
-
-    originalLink :=
-        aboutGui.AddText(
-            "cBlue",
-            "https://www.experts-exchange.com/articles/33932/"
-        )
-
-    originalLink.SetFont(
-        "underline"
-    )
-
-    originalLink.OnEvent(
-        "Click",
-        OpenOriginalArticle
-    )
-
-    ; =====================================================
-    ; Buttons
-    ; =====================================================
-
-    checkBtn :=
-        aboutGui.AddButton(
-            "xm y+20 w120",
+    检查更新按钮 :=
+        窗口.AddButton(
+            "w100",
             "检查更新"
         )
 
-    checkBtn.OnEvent(
+    检查更新按钮.OnEvent(
         "Click",
-        CheckUpdate
+        打开GitHub
     )
 
-    closeBtn :=
-        aboutGui.AddButton(
-            "x+15 w100 Default",
+    按钮 :=
+        窗口.AddButton(
+            "x+10 w100 Default",
             "关闭"
         )
 
-    closeBtn.OnEvent(
+    按钮.OnEvent(
         "Click",
-        (*) => aboutGui.Destroy()
+        (*) => 窗口.Destroy()
     )
 
-    aboutGui.Show(
+    窗口.Show(
         "AutoSize Center"
     )
 }
 
-; =========================================================
-; Open GitHub
-; =========================================================
-
-OpenGitHub(*)
+打开GitHub(*)
 {
-    global GitHubURL
+    global GitHub地址
 
-    Run(GitHubURL)
-}
-
-; =========================================================
-; Open Original Article
-; =========================================================
-
-OpenOriginalArticle(*)
-{
-    Run(
-        "https://www.experts-exchange.com/articles/33932/"
-    )
-}
-
-; =========================================================
-; Check Update
-; =========================================================
-
-CheckUpdate(*)
-{
-    global GitHubURL
-    global AppVersion
-
-    result := MsgBox(
-        "当前版本：" AppVersion "`n`n"
-        "是否打开 GitHub 检查更新？",
-        "检查更新",
-        "YesNo Icon?"
-    )
-
-    if result = "Yes"
-    {
-        Run(GitHubURL)
-    }
-}
-
-; =========================================================
-; Reload
-; =========================================================
-
-ReloadScript(*)
-{
-    Reload()
-}
-
-; =========================================================
-; Exit
-; =========================================================
-
-ExitScript(*)
-{
-    result := MsgBox(
-        "确定退出？",
-        "退出",
-        "YesNo Icon?"
-    )
-
-    if result = "Yes"
-        ExitApp()
+    Run(GitHub地址)
 }
